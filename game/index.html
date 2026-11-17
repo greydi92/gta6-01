@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Port Azura — One Last Job</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0e1420; font-family: 'Segoe UI', system-ui, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; }
+  .panel { background: rgba(10, 14, 22, 0.62); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; padding: 8px 12px; }
+  #stats { position: absolute; top: 12px; left: 12px; min-width: 210px; }
+  #stats .row { display: flex; justify-content: space-between; gap: 14px; font-size: 15px; margin: 2px 0; }
+  #health-bar { height: 10px; background: #222; border-radius: 5px; overflow: hidden; margin: 4px 0 2px; }
+  #health-fill { height: 100%; width: 100%; background: #3aa84f; border-radius: 5px; }
+  #wanted { font-size: 20px; letter-spacing: 2px; color: #888; }
+  #money { color: #7dd87d; font-weight: 700; }
+  #minimap-wrap { position: absolute; top: 12px; right: 12px; }
+  #minimap { display: block; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25); }
+  #objective-box { position: absolute; left: 12px; bottom: 12px; max-width: 420px; }
+  #mission-title { font-size: 13px; color: #ffd23e; font-weight: 700; letter-spacing: 0.5px; }
+  #objective { font-size: 15px; margin-top: 2px; }
+  #dialogue { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%); width: min(620px, 86vw); display: none; cursor: pointer; }
+  #dialogue-text { font-size: 16px; line-height: 1.45; }
+  #dialogue .hint { font-size: 11px; color: #aaa; text-align: right; margin-top: 4px; }
+  #hint { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); font-size: 19px; font-weight: 700; color: #ffd23e; text-shadow: 0 2px 6px #000; opacity: 0; transition: opacity 0.3s; }
+  #damage { position: fixed; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(200,0,0,0.55) 100%); opacity: 0; pointer-events: none; }
+  .menu { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: linear-gradient(180deg, rgba(8,12,20,0.82), rgba(8,12,20,0.68)); color: #fff; pointer-events: auto; text-align: center; padding: 20px; }
+  .menu h1 { font-size: 52px; margin: 0 0 4px; letter-spacing: 2px; color: #ffd23e; text-shadow: 0 4px 18px rgba(0,0,0,0.8); }
+  .menu h2 { font-size: 20px; margin: 0 0 14px; color: #9fc3e8; font-weight: 400; }
+  .menu p { max-width: 560px; line-height: 1.55; color: #d8d8d8; }
+  .menu .controls { font-size: 14px; color: #b8c8d8; line-height: 1.9; margin: 10px 0 18px; }
+  .menu button { pointer-events: auto; font-size: 18px; padding: 12px 34px; margin: 4px; border: none; border-radius: 8px; background: #ffd23e; color: #1a1a1a; font-weight: 700; cursor: pointer; }
+  .menu button.secondary { background: #2a3648; color: #fff; }
+  .menu button:hover { filter: brightness(1.12); }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Port Azura: an open-world crime game. Explore the city on foot or by car, take missions and lose the police."></canvas>
+<div id="hud">
+  <div id="stats" class="panel">
+    <div class="row"><span id="health-text">100 HP</span><span id="ammo"></span></div>
+    <div id="health-bar"><div id="health-fill"></div></div>
+    <div class="row"><span id="money">$120</span><span id="speed">0 km/h</span></div>
+    <div class="row"><span id="wanted">☆☆☆☆☆</span></div>
+  </div>
+  <div id="minimap-wrap" class="panel"><canvas id="minimap" width="180" height="180"></canvas></div>
+  <div id="objective-box" class="panel">
+    <div id="mission-title">Port Azura</div>
+    <div id="objective">Port Azura awaits — press Start</div>
+  </div>
+  <div id="dialogue" class="panel"><div id="dialogue-text"></div><div class="hint">click to continue</div></div>
+  <div id="hint"></div>
+</div>
+<div id="damage"></div>
+<div id="menu-start" class="menu">
+  <h1>PORT AZURA</h1>
+  <h2>One Last Job</h2>
+  <p>Mara Voss, ex-getaway driver, is drawn back for one last job in the fictional coastal city of Port Azura. Steal cars, lose the police, run five story missions — and get out clean.</p>
+  <div class="controls">
+    <b>WASD</b> move / drive &nbsp;·&nbsp; <b>Mouse drag</b> camera &nbsp;·&nbsp; <b>E</b> enter / exit car<br>
+    <b>F</b> punch &nbsp;·&nbsp; <b>G</b> pistol, click to shoot &nbsp;·&nbsp; <b>Space</b> handbrake / drift<br>
+    <b>Shift</b> run &nbsp;·&nbsp; <b>M</b> start mission &nbsp;·&nbsp; <b>T</b> taxi fare at the plaza &nbsp;·&nbsp; <b>Q</b> horn &nbsp;·&nbsp; <b>N</b> mute<br>
+    <b>P / Esc</b> pause
+  </div>
+  <div>
+    <button id="btn-start">Start the job</button>
+    <button id="btn-start-load" class="secondary" style="display:none">Continue save</button>
+  </div>
+</div>
+<div id="menu-pause" class="menu">
+  <h1>PAUSED</h1>
+  <p>Port Azura waits for no one — except right now.</p>
+  <div>
+    <button id="btn-resume">Resume</button>
+    <button id="btn-save" class="secondary">Save</button>
+    <button id="btn-load" class="secondary">Load</button>
+    <button id="btn-restart" class="secondary">Restart day</button>
+  </div>
+</div>
+<div id="menu-end" class="menu">
+  <h1 id="end-title">WASTED</h1>
+  <p id="end-text"></p>
+  <div><button id="btn-respawn">Back on the street</button></div>
+</div>
+<p id="status" role="status" aria-live="polite"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
